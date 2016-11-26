@@ -14,9 +14,6 @@ title_col = []
 fd_col = []
 docsAsShingleSets = {};
 
-
-
-# read data file
 def read_data(csv_file):
     print '>>> read data from', csv_file, '...'
     data = pd.read_csv(csv_file)
@@ -35,19 +32,27 @@ def shingle_data():
         docsNames.append(docID)
         doc_counter = doc_counter + 1
 
-        shinglesInDoc = set()
-
         shingle_list = [doc[i:i + 5] for i in range(len(doc) - 5 + 1)]
 
-        # shinglesInDoc = set(binascii.crc32(single_shingle) for single_shingle in shingle_list)
-
-        for single_shingle in shingle_list:
-            crc = binascii.crc32(single_shingle) & 0xffffffff
-            shinglesInDoc.add(crc)
+        hashed_shingle_list = [binascii.crc32(single_shingle) & 0xffffffff for single_shingle in shingle_list]
+        shinglesInDoc = set(hashed_shingle_list)
+        print shinglesInDoc
 
         docsAsShingleSets[docID] = shinglesInDoc
 
     return docsAsShingleSets
+
+def write_to_file(file_name, data):
+    print ">>> writing to", file_name
+    file = open(file_name, 'w')
+    for row in data:
+        file.write(str(row))
+        file.write(': ')
+        for v in data[row]:
+            file.write(str(v))
+            file.write(' ')
+        file.write('\n')
+    file.close()
 
 def rand_coeffs(numHashes):
     randList = []
@@ -55,15 +60,12 @@ def rand_coeffs(numHashes):
     k = numHashes
 
     while k > 0:
-        # Get a random shingle ID.
-        randIndex = random.randint(0, maxShingleID)
+        random_int = random.randint(0, maxShingleID)
 
-        # Ensure that each random number is unique.
-        while randIndex in randList:
-            randIndex = random.randint(0, maxShingleID)
+        while random_int in randList:
+            random_int = random.randint(0, maxShingleID)
 
-            # Add the random number to the list.
-        randList.append(randIndex)
+        randList.append(random_int)
         k = k - 1
 
     return randList
@@ -85,37 +87,40 @@ def CreateSignature():
     for id in docsNames:
 
         shingleIDSet = docsAsShingleSets[id]
-
         signature = []
 
         for i in range(0, numHashes):
 
-            minHashCode = nextPrime + 1 # ??
+            # must be bigger than the hash
+            minHashCode = nextPrime + 1
 
             for shingleID in shingleIDSet:
 
                 # (A*x+B) % p
-                hashCode = (A[i] * shingleID + B[i]) % nextPrime
+                hash = (A[i] * shingleID + B[i]) % nextPrime
 
-                if hashCode < minHashCode:
-                    minHashCode = hashCode
+                # replace minHashCode only if hash is smaller
+                if hash < minHashCode:
+                    minHashCode = hash
 
             signature.append(minHashCode)
-
         signatures.append(signature)
 
     t = time.time() - t_delta
 
-    print 'creating signatures took %.2fsec' % t
+    print 'creating signatures run time: %.2fsec' % t
 
-def jacard():
+def jacard_compare():
     pass
 
 if __name__ == "__main__":
     file_name = 'Test2.csv'
+    output_file = 'train.pkl'
     title_col, fd_col = read_data(file_name)
 
     docsAsShingleSets = shingle_data()
+
+    write_to_file(output_file, docsAsShingleSets)
 
     CreateSignature()
 
