@@ -3,6 +3,7 @@ import pandas as pd
 import binascii
 import random
 import time
+import os
 
 # constants
 maxShingleID = 2 ** 32 - 1
@@ -36,10 +37,8 @@ def shingle_data():
 
         hashed_shingle_list = [binascii.crc32(single_shingle) & 0xffffffff for single_shingle in shingle_list]
         shinglesInDoc = set(hashed_shingle_list)
-        print shinglesInDoc
 
         docsAsShingleSets[docID] = shinglesInDoc
-
     return docsAsShingleSets
 
 def write_to_file(file_name, data):
@@ -47,12 +46,20 @@ def write_to_file(file_name, data):
     file = open(file_name, 'w')
     for row in data:
         file.write(str(row))
-        file.write(': ')
+        file.write(':')
         for v in data[row]:
-            file.write(str(v))
+            file.write(repr(v))
             file.write(' ')
         file.write('\n')
     file.close()
+
+def read_pkl(file_name):
+    docsAsShingleSets = {}
+    with open(file_name, 'r') as f:
+        for row in f.readlines():
+            title, data = row.split(':')
+            docsAsShingleSets[title] = set(data.split(" "))
+    return docsAsShingleSets
 
 def rand_coeffs(numHashes):
     randList = []
@@ -114,13 +121,16 @@ def jacard_compare():
     pass
 
 if __name__ == "__main__":
-    file_name = 'Test2.csv'
     output_file = 'train.pkl'
+
+    # if not os.path.isfile(output_file):
+    file_name = 'Test2.csv'
     title_col, fd_col = read_data(file_name)
-
     docsAsShingleSets = shingle_data()
-
     write_to_file(output_file, docsAsShingleSets)
+    # else:
+    #     docsAsShingleSets = read_pkl(output_file)
+    #     print docsAsShingleSets
 
     CreateSignature()
 
