@@ -103,3 +103,6 @@ if __name__ == "__main__":
             print 'time elapsed: ', t / docs_num
 
     print buckets
+
+    # export buckets to pickle file
+    pickle.dump(buckets, open('train.pkl', 'wb'))
