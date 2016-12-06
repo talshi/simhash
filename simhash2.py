@@ -7,7 +7,7 @@ import time
 import string
 
 # constants
-data_file = 'Test.csv'
+data_file = 'Test2.csv'
 binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
@@ -29,7 +29,6 @@ def rand_coeffs():
     return np.random.randint(0, maxShingleID, hashfunc_num, dtype=np.uint32)
 
 def doc_to_shingles(doc):
-
 
     docAsShingleSets = []
     docAsHasedShingleSets = []
