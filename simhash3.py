@@ -33,7 +33,6 @@ def doc_to_shingles(doc):
     doc = doc.lower().translate(None, string.punctuation)
 
     shingle_list = [doc[i:i + 5] for i in range(len(doc) - 5 + 1)]
-    # docAsShingleSets = set(shingle_list)
 
     hashed_shingle_list = [hash(single_shingle) for single_shingle in shingle_list]
     docAsHasedShingleSets = set(hashed_shingle_list)
@@ -47,7 +46,6 @@ def createSignature(sdoc, A, B):
 def shingle_to_binary_mat(shingles):
     bin_mat = np.zeros([len(shingles), binary_size], dtype=int)
     to_bin = [bin(shingle)[2:].zfill(32) for shingle in shingles]
-    # bin_mat = np.fromstring(to_bin, dtype='u1') - ord('0')
     bin_mat = np.array([np.fromstring(v, dtype='u1') - ord('0') for v in to_bin])
     return np.sum(bin_mat == 0, axis=0) < np.sum(bin_mat == 1, axis=0).astype(int)
 
@@ -105,9 +103,3 @@ if __name__ == "__main__":
             print 'time elapsed: ', t / docs_num
 
     print buckets
-
-
-    # print buckets
-
-    # export buckets to pickle file
-    # pickle.dump(buckets, open('train.pkl', 'wb'))
