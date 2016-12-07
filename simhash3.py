@@ -11,6 +11,13 @@ binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
+
+number_new_buckets = 0
+number_added_to_buckets = 0
+
+train = "TRAIN"
+test = "TEST"
+
 ############################################################
 def read_data():
     t0 = time.time()
@@ -78,7 +85,7 @@ def compare_docs(a, b):
 def addToDic(key, lineNumber):
     dicIDsignature.update({lineNumber: lsh_signature})
 ############################################################
-def findBuckets(buckets, signature, lineNumber):
+def findBuckets(buckets, signature, lineNumber, status):
     key = ''.join(map(str, signature))
 
     addToDic(key, lineNumber)
@@ -86,9 +93,15 @@ def findBuckets(buckets, signature, lineNumber):
     for bucket_key in buckets.keys():
         if compare_docs(bucket_key, key):
             buckets[bucket_key].append(lineNumber)
+            if(status == "TEST"):
+                global number_added_to_buckets
+                number_added_to_buckets += 1
             return buckets
     buckets[key] = []
     buckets[key].append(lineNumber)
+    if(status == "TEST"):
+        global number_new_buckets
+        number_new_buckets += 1
     return buckets
 ############################################################
 if __name__ == "__main__":
@@ -109,7 +122,7 @@ if __name__ == "__main__":
         signature = createSignature(sdoc, A, B)
         lsh_signature = shingle_to_binary_mat(signature).astype(int)
 
-        buckets = findBuckets(buckets, lsh_signature, lineNumber)
+        buckets = findBuckets(buckets, lsh_signature, lineNumber,train)
         lineNumber += 1
 
         t = time.time() - t0
@@ -129,7 +142,7 @@ if __name__ == "__main__":
 
         dfTest = pd.read_csv(data_file_test)
         # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-        dfTest = df[['FullDescription']][:1000]
+        dfTest = dfTest[['FullDescription']][:1000]
 
         t = time.time() - t0
         print 'time elapsed:', t
@@ -145,7 +158,9 @@ if __name__ == "__main__":
         signature = createSignature(sdoc, A, B)
         lsh_signature = shingle_to_binary_mat(signature).astype(int)
 
-        buckets = findBuckets(buckets, lsh_signature, lineNumber)
+        buckets = findBuckets(buckets, lsh_signature, lineNumber,test)
         lineNumber += 1
 
     print buckets
+    print "NEW BUCKETS IN TEST : ", number_new_buckets
+    print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
