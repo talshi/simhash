@@ -5,7 +5,7 @@ import pickle
 import time
 import string
 
-data_file = 'Test2.csv'
+data_file = 'Train.csv'
 binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
@@ -16,7 +16,8 @@ def read_data():
     print 'read data...'
 
     df = pd.read_csv(data_file)
-    df = df[['Id', 'Title', 'FullDescription', 'Category']]
+    # df = df[['Id', 'Title', 'FullDescription', 'Category']]
+    df = df[['FullDescription']][:1000]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -61,11 +62,13 @@ def jaccard_num(a, b):
     return np.sum(a_list==b_list / float(hashfunc_num))
 
 def compare_docs(a, b):
-    a_str = np.array(list(str(a)))
-    b_str = np.array(list(str(b)))
+    a_str = np.uint32(np.array(list(str(a))))
+    b_str = np.uint32(np.array(list(str(b))))
     diff_c = 0
     for k in range(0, binary_size-1):
-        if a_str[k] != b_str[k]:
+        aBitK = a_str[k]
+        bBitK = b_str[k]
+        if aBitK != bBitK:
             diff_c += 1
         if diff_c == 3:
             return False
@@ -73,17 +76,17 @@ def compare_docs(a, b):
 
 def findBuckets(buckets, signature):
     key = ''.join(map(str, signature))
-    if not key in buckets.keys():
-        buckets[key] = []
-    for bucket_key in buckets.keys():
-        if not bucket_key == key and compare_docs(bucket_key, key) < 3:
-            buckets[bucket_key].append(key)
 
+    for bucket_key in buckets.keys():
+        if compare_docs(bucket_key, key):
+            buckets[bucket_key].append(key)
+            return buckets
+    buckets[key] = []
     return buckets
 
 if __name__ == "__main__":
     iter_counter = 0
-    print_counter = 10
+    print_counter = 1000
     df = read_data()
     docs = df.FullDescription
     docs_num = docs.size
