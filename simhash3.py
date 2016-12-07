@@ -1,12 +1,13 @@
 
+from __future__ import division
 import numpy as np
 import pandas as pd
 import pickle
 import time
 import string
 
-data_file = 'Train20.csv'
-data_file_test = 'Test20.csv'
+data_file = 'Train.csv'
+data_file_test = 'Test.csv'
 binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
@@ -17,7 +18,29 @@ number_added_to_buckets = 0
 
 train = "TRAIN"
 test = "TEST"
+############################################################
+def jaccard(bucket_sign,new_sign):
 
+    a_str = np.uint32(np.array(list(str(bucket_sign))))
+    b_str = np.uint32(np.array(list(str(new_sign))))
+    up = 0
+    down = 0
+
+    for k in range(0, binary_size):
+        a = a_str[k]
+        b = b_str[k]
+        if((a != 0) | (b != 0)):
+            down += 1
+            if(a == b):
+                up += 1
+
+
+    if(down == 0):
+        return
+    resJaccard = (up / down)
+    print "jaccard" ,resJaccard
+
+    return resJaccard
 ############################################################
 def read_data():
     t0 = time.time()
@@ -25,7 +48,7 @@ def read_data():
 
     df = pd.read_csv(data_file)
     # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-    df = df[['FullDescription']][:1000]
+    df = df[['FullDescription']][:100]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -58,16 +81,16 @@ def shingle_to_binary_mat(shingles):
     bin_mat = np.array([np.fromstring(v, dtype='u1') - ord('0') for v in to_bin])
     return np.sum(bin_mat == 0, axis=0) < np.sum(bin_mat == 1, axis=0).astype(int)
 ############################################################
-def jaccard(a, b):
-    seta = set(a)
-    setb = set(b)
-    n = len(seta.intersection(setb))
-    return n / float(len(seta) + len(setb) - n)
+# def jaccard(a, b):
+#     seta = set(a)
+#     setb = set(b)
+#     n = len(seta.intersection(setb))
+#     return n / float(len(seta) + len(setb) - n)
 ############################################################
-def jaccard_num(a, b):
-    a_list = np.array([int(i) for i in str(a)])
-    b_list = np.array([int(i) for i in str(b)])
-    return np.sum(a_list==b_list / float(hashfunc_num))
+# def jaccard_num(a, b):
+#     a_list = np.array([int(i) for i in str(a)])
+#     b_list = np.array([int(i) for i in str(b)])
+#     return np.sum(a_list==b_list / float(hashfunc_num))
 ############################################################
 def compare_docs(a, b):
     a_str = np.uint32(np.array(list(str(a))))
@@ -91,8 +114,12 @@ def findBuckets(buckets, signature, lineNumber, status):
     addToDic(key, lineNumber)
 
     for bucket_key in buckets.keys():
+
+        jec = jaccard(bucket_key, key)
+
         if compare_docs(bucket_key, key):
             buckets[bucket_key].append(lineNumber)
+            print "*************Insert to buckets -> NEED TO BE MORE 0.8 ACCORDING JECCARD *********", jec
             if(status == "TEST"):
                 global number_added_to_buckets
                 number_added_to_buckets += 1
@@ -104,6 +131,7 @@ def findBuckets(buckets, signature, lineNumber, status):
         number_new_buckets += 1
     return buckets
 ############################################################
+
 if __name__ == "__main__":
     dicIDsignature = {}  # {'key(ID)': 'value(SIGNATURE)'}
     iter_counter = 0
@@ -142,7 +170,7 @@ if __name__ == "__main__":
 
         dfTest = pd.read_csv(data_file_test)
         # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-        dfTest = dfTest[['FullDescription']][:1000]
+        dfTest = dfTest[['FullDescription']][:100]
 
         t = time.time() - t0
         print 'time elapsed:', t
@@ -164,3 +192,12 @@ if __name__ == "__main__":
     print buckets
     print "NEW BUCKETS IN TEST : ", number_new_buckets
     print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
+
+    # x =  bin(00010000010000000000000000000000)
+    # y =  bin(00010000000000000000000000000000)
+    #
+    # print x
+    # print y
+    #
+    # res = jaccard(x,y)
+    # print res
