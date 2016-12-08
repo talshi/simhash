@@ -8,7 +8,7 @@ import string
 
 data_file = 'Train.csv'
 data_file_test = 'Test.csv'
-binary_size = 32
+binary_size = 31
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
@@ -33,7 +33,6 @@ def jaccard(bucket_sign,new_sign):
             down += 1
             if(a == b):
                 up += 1
-
 
     if(down == 0):
         return
