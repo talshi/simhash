@@ -27,7 +27,7 @@ def read_data():
     print 'read data...'
 
     df = pd.read_csv(data_file)
-    df = df[['FullDescription']][:docs_num]
+    df = df[['FullDescription']]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -137,7 +137,7 @@ def read_dataTest():
     print 'read data Test...'
 
     dfTest = pd.read_csv(data_file_test)
-    dfTest = dfTest[['FullDescription']][:docs_num]
+    dfTest = dfTest[['FullDescription']]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -149,7 +149,7 @@ def read_dataTest():
 if __name__ == "__main__":
     dicIDsignature = {}
     iter_counter = 0
-    print_counter = 1000
+    print_counter = 100
     df = read_data()
     docs = df.FullDescription
     docs_num = docs.size
@@ -179,8 +179,8 @@ if __name__ == "__main__":
     print buckets
     print 'accuracy:', accuracy
 
-  #  export buckets to pickle file
-  # pickle.dump(buckets, open('train.pkl', 'wb'))
+    # export buckets to pickle file
+    pickle.dump(buckets, open('train.pkl', 'wb'))
 
     ###################### TEST AREA ###################
 
@@ -212,3 +212,6 @@ if __name__ == "__main__":
     print 'accuracy:', accuracy
     print "NEW BUCKETS IN TEST : ", number_new_buckets
     print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
+
+    # export buckets to pickle file
+    pickle.dump(buckets, open('test.pkl', 'wb'))
