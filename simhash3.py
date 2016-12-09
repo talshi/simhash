@@ -16,67 +16,30 @@ hashfunc_num = 50
 number_new_buckets = 0
 number_added_to_buckets = 0
 
-train = "TRAIN"
-test = "TEST"
-############################################################
-# def jaccard(bucket_sign,new_sign):
-#
-#     a_str = np.uint32(np.array(list(str(bucket_sign))))
-#     b_str = np.uint32(np.array(list(str(new_sign))))
-#     up = 0
-#     down = 0
-#     for k in range(0, binary_size):
-#         a = a_str[k]
-#         b = b_str[k]
-#         if((a != 0) | (b != 0)):
-#             down += 1
-#             if(a == b):
-#                 up += 1
-#
-#     if(down == 0):
-#         return
-#     resJaccard = (up / down)
-#     print "jaccard" ,resJaccard
-#     return resJaccard
-############################################################
-def jaccard(a, b):
-    seta = doc_to_shingles(dicIDsignature[a])
-    setb = doc_to_shingles(dicIDsignature[b])
-    n = len(seta.intersection(setb))
-    return n / float(len(seta) + len(setb) - n)
-#
-#     # OFFLINE  AND  ONLINE !!!!!!!
-#
-#     # a -> bucket
-#     # b -> sign
-#     # dicIDsignature  { line number , sign }  |  file -> { line numer , doc }
-#     # 1)  create shingls to doc of bucket = > shinglsBucket
-#     # 2)  create shingls to sign -> dicIDsign .
-#     # 3) jec = check jeccard according
-#     # 4) if jec > 0.8
-#     # 4.1) sign need to be in this bucket
-#     # 5) zao
-#
-
-
+train = 'TRAIN'
+test = 'TEST'
 
 ############################################################
+
 def read_data():
     t0 = time.time()
     print 'read data...'
 
     df = pd.read_csv(data_file)
-    # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-    df = df[['FullDescription']][:30]
+    df = df[['FullDescription']][:1000]
 
     t = time.time() - t0
     print 'time elapsed:', t
 
     return df
+
 ############################################################
+
 def rand_coeffs():
     return np.random.randint(0, maxShingleID, hashfunc_num, dtype=np.uint32)
+
 ############################################################
+
 def doc_to_shingles(doc):
 
     docAsShingleSets = []
@@ -89,7 +52,9 @@ def doc_to_shingles(doc):
     docAsHasedShingleSets = set(hashed_shingle_list)
 
     return docAsHasedShingleSets
+
 ############################################################
+
 def createSignature(sdoc, A, B):
     sdoc = np.array(list(sdoc))
     return np.min((A[:,np.newaxis]*sdoc+1*B[:,np.newaxis])%bigPrime, axis=1)
@@ -99,7 +64,9 @@ def shingle_to_binary_mat(shingles):
     to_bin = [bin(shingle)[2:].zfill(32) for shingle in shingles]
     bin_mat = np.array([np.fromstring(v, dtype='u1') - ord('0') for v in to_bin])
     return np.sum(bin_mat == 0, axis=0) < np.sum(bin_mat == 1, axis=0).astype(int)
+
 ############################################################
+
 def compare_docs(a, b):
     a_str = np.uint32(np.array(list(str(a))))
     b_str = np.uint32(np.array(list(str(b))))
@@ -112,11 +79,23 @@ def compare_docs(a, b):
         if diff_c > 1:
             return False
     return True
+
 ############################################################
+
 def addToDic(key, lineNumber):
     dicIDsignature.update({key: lineNumber})
+
 ############################################################
-def findBuckets(buckets, signature, lineNumber, status):
+
+def jaccard(a, b):
+    seta = doc_to_shingles(df.loc[dicIDsignature[a], 'FullDescription'])
+    setb = doc_to_shingles(df.loc[dicIDsignature[b], 'FullDescription'])
+    n = len(seta.intersection(setb))
+    return n / float(len(seta) + len(setb) - n)
+
+############################################################
+
+def findBuckets(buckets, signature, lineNumber, status, error_num):
     key = ''.join(map(str, signature))
 
     if status == "TRAIN":
@@ -124,28 +103,33 @@ def findBuckets(buckets, signature, lineNumber, status):
 
     for bucket_key in buckets.keys():
 
-        jec = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
+        jac = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
 
         if compare_docs(bucket_key, key):  # need compare
+            if jac < 0.8:
+                error_num += 1
             buckets[bucket_key].append(lineNumber)
             print "------------------------------------------------------------------------------------------"
-            print "*************Insert to buckets -> NEED TO BE MORE 0.8 ACCORDING JECCARD *********", jec
-            print "sign1->Buecket-[",bucket_key,"]"
-            print "sign2->newSign[",key,"]"
+            print "************* Insert to buckets -> NEED TO BE > 0.8 ACCORDING TO JACCARD *********", jac
+            print "sign1 -> Bucket [",bucket_key,"]"
+            print "sign2 -> newSign[",key,"]"
+            print "------------------------------------------------------------------------------------------"
+
             if(status == "TEST"):
                 global number_added_to_buckets
                 number_added_to_buckets += 1
-            return buckets
+            return buckets, error_num
     buckets[key] = []
     buckets[key].append(lineNumber)
     if(status == "TEST"):
         global number_new_buckets
         number_new_buckets += 1
-    return buckets
+
+    return buckets, error_num
 ############################################################
 
 if __name__ == "__main__":
-    dicIDsignature = {}  # {'key(ID)': 'value(SIGNATURE)'}
+    dicIDsignature = {}
     iter_counter = 0
     print_counter = 1000
     df = read_data()
@@ -154,6 +138,8 @@ if __name__ == "__main__":
     A, B = rand_coeffs(), rand_coeffs()
     buckets = {}
     lineNumber = 0
+    error_num = 0
+    accuracy = 1
 
     for doc in docs:
         iter_counter += 1
@@ -162,48 +148,51 @@ if __name__ == "__main__":
         signature = createSignature(sdoc, A, B)
         lsh_signature = shingle_to_binary_mat(signature).astype(int)
 
-        buckets = findBuckets(buckets, lsh_signature, lineNumber,train)
+        buckets, error_num = findBuckets(buckets, lsh_signature, lineNumber, train, error_num)
         lineNumber += 1
+        error = error_num / iter_counter
+        accuracy = 1 - error
 
         t = time.time() - t0
         if iter_counter % print_counter == 0:
             print 'time elapsed: ', t / docs_num
+            print 'accuracy:', accuracy
 
-   #print buckets
-   #print dicIDsignature
+    print buckets
+    print 'accuracy:', accuracy
+
   #  export buckets to pickle file
   # pickle.dump(buckets, open('train.pkl', 'wb'))
 
     ###################### TEST AREA ###################
 
-    def read_dataTest():
-        t0 = time.time()
-        print 'read data Test...'
-
-        dfTest = pd.read_csv(data_file_test)
-        # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-        dfTest = dfTest[['FullDescription']][:30]
-
-        t = time.time() - t0
-        print 'time elapsed:', t
-
-        return dfTest
-
-    df_test = read_dataTest()
-    docs_test = df_test.FullDescription
-    docs_num_test = docs_test.size
-
-    for doc in docs_test:
-        sdoc = doc_to_shingles(doc)
-        signature = createSignature(sdoc, A, B)
-        lsh_signature = shingle_to_binary_mat(signature).astype(int)
-
-        buckets = findBuckets(buckets, lsh_signature, lineNumber,test)# "TEST"
-        lineNumber += 1
-
-    print buckets
-    print "NEW BUCKETS IN TEST : ", number_new_buckets
-    print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
+    # def read_dataTest():
+    #     t0 = time.time()
+    #     print 'read data Test...'
+    #
+    #     dfTest = pd.read_csv(data_file_test)
+    #     dfTest = dfTest[['FullDescription']][:30]
+    #
+    #     t = time.time() - t0
+    #     print 'time elapsed:', t
+    #
+    #     return dfTest
+    #
+    # df_test = read_dataTest()
+    # docs_test = df_test.FullDescription
+    # docs_num_test = docs_test.size
+    #
+    # for doc in docs_test:
+    #     sdoc = doc_to_shingles(doc)
+    #     signature = createSignature(sdoc, A, B)
+    #     lsh_signature = shingle_to_binary_mat(signature).astype(int)
+    #
+    #     buckets = findBuckets(buckets, lsh_signature, lineNumber,test)# "TEST"
+    #     lineNumber += 1
+    #
+    # print buckets
+    # print "NEW BUCKETS IN TEST : ", number_new_buckets
+    # print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
 
     # x =  '00011111110000000000001000000000'
     # y =  '00001111110000000000001000000000'  # 7 / 8
