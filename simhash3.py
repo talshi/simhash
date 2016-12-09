@@ -11,7 +11,8 @@ data_file_test = 'Test.csv'
 binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
-hashfunc_num = 50
+hashfunc_num = 100
+docs_num = 1000
 
 number_new_buckets = 0
 number_added_to_buckets = 0
@@ -26,7 +27,7 @@ def read_data():
     print 'read data...'
 
     df = pd.read_csv(data_file)
-    df = df[['FullDescription']][:1000]
+    df = df[['FullDescription']][:docs_num]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -100,11 +101,13 @@ def findBuckets(buckets, signature, lineNumber, status, error_num):
 
     if status == "TRAIN":
         addToDic(key, lineNumber)
+    elif status == 'TEST':
+        addToDic(key, lineNumber-docs_num)
 
     for bucket_key in buckets.keys():
 
         jac = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
-
+        # print jac
         if compare_docs(bucket_key, key):  # need compare
             if jac < 0.8:
                 error_num += 1
@@ -126,6 +129,21 @@ def findBuckets(buckets, signature, lineNumber, status, error_num):
         number_new_buckets += 1
 
     return buckets, error_num
+
+############################################################
+
+def read_dataTest():
+    t0 = time.time()
+    print 'read data Test...'
+
+    dfTest = pd.read_csv(data_file_test)
+    dfTest = dfTest[['FullDescription']][:docs_num]
+
+    t = time.time() - t0
+    print 'time elapsed:', t
+
+    return dfTest
+
 ############################################################
 
 if __name__ == "__main__":
@@ -166,35 +184,31 @@ if __name__ == "__main__":
 
     ###################### TEST AREA ###################
 
-    # def read_dataTest():
-    #     t0 = time.time()
-    #     print 'read data Test...'
-    #
-    #     dfTest = pd.read_csv(data_file_test)
-    #     dfTest = dfTest[['FullDescription']][:30]
-    #
-    #     t = time.time() - t0
-    #     print 'time elapsed:', t
-    #
-    #     return dfTest
-    #
-    # df_test = read_dataTest()
-    # docs_test = df_test.FullDescription
-    # docs_num_test = docs_test.size
-    #
-    # for doc in docs_test:
-    #     sdoc = doc_to_shingles(doc)
-    #     signature = createSignature(sdoc, A, B)
-    #     lsh_signature = shingle_to_binary_mat(signature).astype(int)
-    #
-    #     buckets = findBuckets(buckets, lsh_signature, lineNumber,test)# "TEST"
-    #     lineNumber += 1
-    #
-    # print buckets
-    # print "NEW BUCKETS IN TEST : ", number_new_buckets
-    # print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
+    iter_counter = 0
+    error_num = 0
+    accuracy = 1
+    df_test = read_dataTest()
+    docs_test = df_test.FullDescription
+    docs_num_test = docs_test.size
 
-    # x =  '00011111110000000000001000000000'
-    # y =  '00001111110000000000001000000000'  # 7 / 8
-    #
-    # print jaccard(x,y)
+    for doc in docs_test:
+        iter_counter += 1
+        t0 = time.time()
+        sdoc = doc_to_shingles(doc)
+        signature = createSignature(sdoc, A, B)
+        lsh_signature = shingle_to_binary_mat(signature).astype(int)
+
+        buckets, error_num = findBuckets(buckets, lsh_signature, lineNumber,test, error_num)
+        lineNumber += 1
+        error = error_num / iter_counter
+        accuracy = 1 - error
+
+        t = time.time() - t0
+        if iter_counter % print_counter == 0:
+            print 'time elapsed: ', t / docs_num
+            print 'accuracy:', accuracy
+
+    print buckets
+    print 'accuracy:', accuracy
+    print "NEW BUCKETS IN TEST : ", number_new_buckets
+    print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
