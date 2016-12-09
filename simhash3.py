@@ -8,7 +8,7 @@ import string
 
 data_file = 'Train.csv'
 data_file_test = 'Test.csv'
-binary_size = 31
+binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
@@ -19,27 +19,47 @@ number_added_to_buckets = 0
 train = "TRAIN"
 test = "TEST"
 ############################################################
-def jaccard(bucket_sign,new_sign):
+# def jaccard(bucket_sign,new_sign):
+#
+#     a_str = np.uint32(np.array(list(str(bucket_sign))))
+#     b_str = np.uint32(np.array(list(str(new_sign))))
+#     up = 0
+#     down = 0
+#     for k in range(0, binary_size):
+#         a = a_str[k]
+#         b = b_str[k]
+#         if((a != 0) | (b != 0)):
+#             down += 1
+#             if(a == b):
+#                 up += 1
+#
+#     if(down == 0):
+#         return
+#     resJaccard = (up / down)
+#     print "jaccard" ,resJaccard
+#     return resJaccard
+############################################################
+def jaccard(a, b):
+    seta = doc_to_shingles(dicIDsignature[a])
+    setb = doc_to_shingles(dicIDsignature[b])
+    n = len(seta.intersection(setb))
+    return n / float(len(seta) + len(setb) - n)
+#
+#     # OFFLINE  AND  ONLINE !!!!!!!
+#
+#     # a -> bucket
+#     # b -> sign
+#     # dicIDsignature  { line number , sign }  |  file -> { line numer , doc }
+#     # 1)  create shingls to doc of bucket = > shinglsBucket
+#     # 2)  create shingls to sign -> dicIDsign .
+#     # 3) jec = check jeccard according
+#     # 4) if jec > 0.8
+#     # 4.1) sign need to be in this bucket
+#     # 5) zao
+#
 
-    a_str = np.uint32(np.array(list(str(bucket_sign))))
-    b_str = np.uint32(np.array(list(str(new_sign))))
-    up = 0
-    down = 0
 
-    for k in range(0, binary_size):
-        a = a_str[k]
-        b = b_str[k]
-        if((a != 0) | (b != 0)):
-            down += 1
-            if(a == b):
-                up += 1
 
-    if(down == 0):
-        return
-    resJaccard = (up / down)
-    print "jaccard" ,resJaccard
-
-    return resJaccard
 ############################################################
 def read_data():
     t0 = time.time()
@@ -47,7 +67,7 @@ def read_data():
 
     df = pd.read_csv(data_file)
     # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-    df = df[['FullDescription']][:100]
+    df = df[['FullDescription']][:30]
 
     t = time.time() - t0
     print 'time elapsed:', t
@@ -80,45 +100,38 @@ def shingle_to_binary_mat(shingles):
     bin_mat = np.array([np.fromstring(v, dtype='u1') - ord('0') for v in to_bin])
     return np.sum(bin_mat == 0, axis=0) < np.sum(bin_mat == 1, axis=0).astype(int)
 ############################################################
-# def jaccard(a, b):
-#     seta = set(a)
-#     setb = set(b)
-#     n = len(seta.intersection(setb))
-#     return n / float(len(seta) + len(setb) - n)
-############################################################
-# def jaccard_num(a, b):
-#     a_list = np.array([int(i) for i in str(a)])
-#     b_list = np.array([int(i) for i in str(b)])
-#     return np.sum(a_list==b_list / float(hashfunc_num))
-############################################################
 def compare_docs(a, b):
     a_str = np.uint32(np.array(list(str(a))))
     b_str = np.uint32(np.array(list(str(b))))
     diff_c = 0
-    for k in range(0, binary_size-1):
+    for k in range(0, binary_size):
         aBitK = a_str[k]
         bBitK = b_str[k]
         if aBitK != bBitK:
             diff_c += 1
-        if diff_c == 3:
+        if diff_c > 1:
             return False
     return True
 ############################################################
 def addToDic(key, lineNumber):
-    dicIDsignature.update({lineNumber: lsh_signature})
+    dicIDsignature.update({key: lineNumber})
 ############################################################
 def findBuckets(buckets, signature, lineNumber, status):
     key = ''.join(map(str, signature))
 
-    addToDic(key, lineNumber)
+    if status == "TRAIN":
+        addToDic(key, lineNumber)
 
     for bucket_key in buckets.keys():
 
-        jec = jaccard(bucket_key, key)
+        jec = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
 
-        if compare_docs(bucket_key, key):
+        if compare_docs(bucket_key, key):  # need compare
             buckets[bucket_key].append(lineNumber)
+            print "------------------------------------------------------------------------------------------"
             print "*************Insert to buckets -> NEED TO BE MORE 0.8 ACCORDING JECCARD *********", jec
+            print "sign1->Buecket-[",bucket_key,"]"
+            print "sign2->newSign[",key,"]"
             if(status == "TEST"):
                 global number_added_to_buckets
                 number_added_to_buckets += 1
@@ -169,7 +182,7 @@ if __name__ == "__main__":
 
         dfTest = pd.read_csv(data_file_test)
         # df = df[['Id', 'Title', 'FullDescription', 'Category']]
-        dfTest = dfTest[['FullDescription']][:100]
+        dfTest = dfTest[['FullDescription']][:30]
 
         t = time.time() - t0
         print 'time elapsed:', t
@@ -185,18 +198,14 @@ if __name__ == "__main__":
         signature = createSignature(sdoc, A, B)
         lsh_signature = shingle_to_binary_mat(signature).astype(int)
 
-        buckets = findBuckets(buckets, lsh_signature, lineNumber,test)
+        buckets = findBuckets(buckets, lsh_signature, lineNumber,test)# "TEST"
         lineNumber += 1
 
     print buckets
     print "NEW BUCKETS IN TEST : ", number_new_buckets
     print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
 
-    # x =  bin(00010000010000000000000000000000)
-    # y =  bin(00010000000000000000000000000000)
+    # x =  '00011111110000000000001000000000'
+    # y =  '00001111110000000000001000000000'  # 7 / 8
     #
-    # print x
-    # print y
-    #
-    # res = jaccard(x,y)
-    # print res
+    # print jaccard(x,y)
