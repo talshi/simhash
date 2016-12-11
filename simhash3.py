@@ -12,7 +12,7 @@ binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
-docs_num = 300
+docs_num = 1000
 
 number_new_buckets = 0
 number_added_to_buckets = 0
@@ -99,6 +99,7 @@ def jaccard(a, b):
 ############################################################
 def printDocs(sign1, sign2,status):
         print status
+        print "======================================="
         print "-------------doc sign1-----------------"
         doc = df.loc[dicIDsignature[sign1], 'FullDescription']
         print doc
