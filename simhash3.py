@@ -11,8 +11,8 @@ data_file_test = 'Test.csv'
 binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
-hashfunc_num = 100
-docs_num = 1000
+hashfunc_num = 50
+docs_num = 300
 
 number_new_buckets = 0
 number_added_to_buckets = 0
@@ -47,7 +47,9 @@ def doc_to_shingles(doc):
     docAsHasedShingleSets = []
     doc = doc.lower().translate(None, string.punctuation)
 
-    shingle_list = [doc[i:i + 5] for i in range(len(doc) - 5 + 1)]
+    doc_split = doc.split(" ")
+
+    shingle_list = [" ".join(doc_split[i:i + 5]) for i in range(len(doc_split) - 5 + 1)]
 
     hashed_shingle_list = [hash(single_shingle) for single_shingle in shingle_list]
     docAsHasedShingleSets = set(hashed_shingle_list)
@@ -95,7 +97,15 @@ def jaccard(a, b):
     return n / float(len(seta) + len(setb) - n)
 
 ############################################################
-
+def printDocs(sign1, sign2,status):
+        print status
+        print "-------------doc sign1-----------------"
+        doc = df.loc[dicIDsignature[sign1], 'FullDescription']
+        print doc
+        print "-------------doc sidn2 -----------------"
+        doc = df.loc[dicIDsignature[sign2], 'FullDescription']
+        print doc
+############################################################
 def findBuckets(buckets, signature, lineNumber, status, error_num):
     key = ''.join(map(str, signature))
 
@@ -111,6 +121,9 @@ def findBuckets(buckets, signature, lineNumber, status, error_num):
         if compare_docs(bucket_key, key):  # need compare
             if jac < 0.8:
                 error_num += 1
+
+            printDocs(bucket_key, key,status)
+
             buckets[bucket_key].append(lineNumber)
             print "------------------------------------------------------------------------------------------"
             print "************* Insert to buckets -> NEED TO BE > 0.8 ACCORDING TO JACCARD *********", jac
