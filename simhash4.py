@@ -12,11 +12,11 @@ binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
-docs_num = 2000
+# docs_num = 2000
 
 number_new_buckets = 0
 number_added_to_buckets = 0
-number_of_new_bucket = 0
+train_number_of_new_bucket = 0
 
 exact = 0
 one_bit_excat = 0
@@ -176,9 +176,9 @@ def findBuckets(buckets, signature, lineNumber, status, error_num, docs_dict, i,
 
     key = ''.join(map(str, signature))
 
-    if len(dicIDsignature) == 0:                        # if buckets number is 0 - need to add the sign to dicIDsignatue - open new bucket
-        addToDic(key, lineNumber)                       #dicIDsignature.update({key: lineNumber})
-        buckets.setdefault(key,[]).append(lineNumber)    #[key].append(lineNumber)          # a.setdefault("somekey",[]).append("bob")
+    if len(dicIDsignature) == 0:
+        addToDic(key, lineNumber)
+        buckets.setdefault(key,[]).append(lineNumber)
         return buckets, error_num
 
     addToDic(key, lineNumber)
@@ -212,8 +212,8 @@ def findBuckets(buckets, signature, lineNumber, status, error_num, docs_dict, i,
 
     buckets[key] = []
     buckets[key].append(lineNumber)
-    global number_of_new_bucket
-    number_of_new_bucket += 1
+    global train_number_of_new_bucket
+    train_number_of_new_bucket += 1
 
     return buckets ,error_num
 
@@ -240,13 +240,12 @@ if __name__ == "__main__":
     df = read_data()
     docs = df.FullDescription
     docs_num = docs.size
-    A, B = rand_coeffs(), rand_coeffs()
     buckets = {}
     lineNumber = 0
     error_num = 0
-    accuracy = 1
+    train_accuracy = 1
     i = 0
-    t_total = 0
+    t_train_total = 0
     docs_dict = []
 
     for i, doc in enumerate(docs):
@@ -254,7 +253,38 @@ if __name__ == "__main__":
         t0 = time.time()
         shingles_hash_set = doc_to_shingles(doc)   # return set hash shingles
         docs_dict.append(shingles_hash_set)
-        # signature = createSignature(doc, A, B)
+        signature = shingle_to_binary_mat(shingles_hash_set).astype(int)
+
+        buckets, error_num = findBuckets(buckets, signature, lineNumber, train, error_num, docs_dict, i, doc)
+        lineNumber += 1
+        error = error_num / iter_counter
+        train_accuracy = 1 - error
+
+        t = time.time() - t0
+        t_train_total += t
+        if iter_counter % print_counter == 0:
+            print "ITER #", i
+            print 'time elapsed: ', t_train_total / docs_num
+            print 'train accuracy:', train_accuracy
+
+    # export buckets to pickle file
+    pickle.dump(buckets, open('train.pkl', 'wb'))
+
+    ###################### TEST AREA ###################
+
+    iter_counter = 0
+    error_num = 0
+    test_accuracy = 1
+    df_test = read_dataTest()
+    docs_test = df_test.FullDescription
+    docs_num_test = docs_test.size
+    t_test_total = 0
+
+    for i, doc in enumerate(docs_test):
+        iter_counter += 1
+        t0 = time.time()
+        shingles_hash_set = doc_to_shingles(doc)  # return set hash shingles
+        docs_dict.append(shingles_hash_set)
         signature = shingle_to_binary_mat(shingles_hash_set).astype(int)
 
         buckets, error_num = findBuckets(buckets, signature, lineNumber, train, error_num, docs_dict, i, doc)
@@ -263,53 +293,21 @@ if __name__ == "__main__":
         accuracy = 1 - error
 
         t = time.time() - t0
-        t_total += t
+        t_test_total += t
         if iter_counter % print_counter == 0:
             print "ITER #", i
-            print 'time elapsed: ', t_total / docs_num
-            print 'accuracy:', accuracy
+            print 'time elapsed: ', t_test_total / docs_num
+            print 'test accuracy:', test_accuracy
 
-    # print buckets
-    # print 'accuracy:', accuracy
-    # export buckets to pickle file
-    pickle.dump(buckets, open('train.pkl', 'wb'))
 
-    ###################### TEST AREA ###################
-
-    # iter_counter = 0
-    # error_num = 0
-    # accuracy = 1
-    # df_test = read_dataTest()
-    # docs_test = df_test.FullDescription
-    # docs_num_test = docs_test.size
-    #
-    # for doc in docs_test:
-    #     iter_counter += 1
-    #     t0 = time.time()
-    #     sdoc = doc_to_shingles(doc)
-    #     signature = createSignature(sdoc, A, B)
-    #     lsh_signature = shingle_to_binary_mat(signature).astype(int)
-    #
-    #     buckets, error_num = findBuckets(buckets, lsh_signature, lineNumber,test, error_num)
-    #     lineNumber += 1
-    #     error = error_num / iter_counter
-    #     accuracy = 1 - error
-    #
-    #     t = time.time() - t0
-    #     if iter_counter % print_counter == 0:
-    #         print 'time elapsed: ', t / docs_num
-    #         print 'accuracy:', accuracy
-    print "::::::::::::::::::::::::::::::::::::::::::::\n\n\n"
-    # print buckets
-    print 'accuracy: ', accuracy
-    print 'excat: ',exact
-    print  'one_bit_excat:', one_bit_excat
-    print 'two_bit_excat:', two_bit_excat
-    print 'sum one,two :', one_bit_excat+two_bit_excat
-    print 'ERROR: ', error_num
-    print 'number_of_new_bucket :',number_of_new_bucket
-    # print "NEW BUCKETS IN TEST : ", number_new_buckets
-    # print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
-    # print "MISS" , miss
-    # export buckets to pickle file
-    # pickle.dump(buckets, open('test.pkl', 'wb'))
+    print "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n\n\n"
+    print 'train accuracy:', train_accuracy
+    print 'train iteration avg time: ', t_train_total / docs_num
+    print 'test accuracy:', test_accuracy
+    print 'test iteration avg time: ', t_test_total / docs_num
+    # print 'excat: ', exact
+    # print  'one_bit_excat:', one_bit_excat
+    # print 'two_bit_excat:', two_bit_excat
+    # print 'sum one,two :', one_bit_excat + two_bit_excat
+    # print 'ERROR: ', error_num
+    print 'number_of_new_bucket (train) :', train_number_of_new_bucket
