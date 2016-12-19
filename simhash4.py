@@ -12,7 +12,7 @@ binary_size = 32
 maxShingleID = 2 ** binary_size - 1
 bigPrime = 4294967311
 hashfunc_num = 50
-docs_num = 190000
+docs_num = 2000
 
 number_new_buckets = 0
 number_added_to_buckets = 0
@@ -70,7 +70,9 @@ def createSignature(sdoc, A, B):
     x = np.min((A[:,np.newaxis]*sdoc+1*B[:,np.newaxis])%bigPrime, axis=1)
     # print x
     return x
+
 ############################################################
+
 def shingle_to_binary_mat(shingles):
     bin_mat = np.zeros([len(shingles), binary_size], dtype=int)
     to_bin = [bin(shingle)[2:].zfill(32) for shingle in shingles]
@@ -88,7 +90,7 @@ def compare_docs(a, b):
         bBitK = b_str[k]
         if aBitK != bBitK:
             diff_c += 1
-        if diff_c > 3:
+        if diff_c > 1:
             return False
     return True
 
@@ -118,7 +120,7 @@ def check_in_buckets(buckets, key, lineNumber,error_num, bit):
         if bit == "ZERO_BIT":
             if key in buckets:
                 buckets[key].append(lineNumber)
-                print("exact hit")
+                # print("exact hit")
                 global  exact
                 exact += 1
                 return True, buckets , key
@@ -214,54 +216,6 @@ def findBuckets(buckets, signature, lineNumber, status, error_num, docs_dict, i,
     number_of_new_bucket += 1
 
     return buckets ,error_num
-    # if len(dicIDsignature) == 0: # if buckets number is 0 - need to add the sign to dicIDsignatue - open new bucket
-    #     #print dicIDsignature
-    #     addToDic(key, lineNumber)   #     dicIDsignature.update({key: lineNumber})
-    #     buckets.setdefault(key,[]).append(lineNumber)    #[key].append(lineNumber)          # a.setdefault("somekey",[]).append("bob")
-    #     return buckets, error_num
-    # if status == "TRAIN":
-    #     addToDic(key, lineNumber)
-    # elif status == "TEST":
-    #     addToDic(key, lineNumber-docs_num)
-    #
-    # flag = 0
-    # flagJac = 0
-    # for bucket_key in buckets.keys():
-    #     jac = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
-    #     if jac >= 0.8:
-    #         flagJac = 1
-    #         break
-    #
-    # if key in buckets:
-    #     buckets[key].append(lineNumber)
-    # for bucket_key in buckets.keys():
-    #     # jac = jaccard(bucket_key, key)  # need get 0.8  for insert to excist buecket
-    #     res_compare_to = compare_docs(bucket_key, key)
-    #
-    #     if res_compare_to:  # need compare
-    #         # if jac < 0.8:
-    #         #     error_num += 1
-    #
-    #         buckets[bucket_key].append(lineNumber)
-    #         # printDocs(bucket_key, key, status)
-    #         return buckets, error_num
-    #
-    #     # if jac >= 0.8:
-    #     #     print "NOT FOUND NOT FOUND NOT FOUND NOT FOUND"
-    #     #     # printDocs(bucket_key, key, status)
-    #     #     global miss
-    #     #     miss += 1
-    #     #     error_num += 1
-    #     #     # print "---------------------------------------"
-    # else:
-    #     flag = 1
-    #     buckets[key] = [lineNumber]
-    #
-    # if flag == 1:
-    #     if flagJac == 1:
-    #         print "NOT FOUND NOT FOUND NOT FOUND NOT FOUND"
-    #
-    # return buckets, error_num
 
 ############################################################
 
@@ -296,11 +250,11 @@ if __name__ == "__main__":
     docs_dict = []
 
     for i, doc in enumerate(docs):
-        i += 1
         iter_counter += 1
         t0 = time.time()
         shingles_hash_set = doc_to_shingles(doc)   # return set hash shingles
         docs_dict.append(shingles_hash_set)
+        # signature = createSignature(doc, A, B)
         signature = shingle_to_binary_mat(shingles_hash_set).astype(int)
 
         buckets, error_num = findBuckets(buckets, signature, lineNumber, train, error_num, docs_dict, i, doc)
@@ -358,4 +312,4 @@ if __name__ == "__main__":
     # print "ADDED TO BUCKETS IN TEST: ", number_added_to_buckets
     # print "MISS" , miss
     # export buckets to pickle file
-    pickle.dump(buckets, open('test.pkl', 'wb'))
+    # pickle.dump(buckets, open('test.pkl', 'wb'))
